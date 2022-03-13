@@ -23,11 +23,11 @@ class BytewiseComparatorImpl : public Comparator {
   BytewiseComparatorImpl() = default;
 
   const char* Name() const override { return "leveldb.BytewiseComparator"; }
-
+  // 通过字典序来进行比较
   int Compare(const Slice& a, const Slice& b) const override {
     return a.compare(b);
   }
-
+  // 将start指向的内容修改为最短的值大于start小于limit的字符串;如果没找到则不修改start指向的内容
   void FindShortestSeparator(std::string* start,
                              const Slice& limit) const override {
     // Find length of common prefix
@@ -50,7 +50,7 @@ class BytewiseComparatorImpl : public Comparator {
       }
     }
   }
-
+  //将key指向的内容修改为最短且值大于key的字符串
   void FindShortSuccessor(std::string* key) const override {
     // Find first character that can be incremented
     size_t n = key->size();
@@ -66,7 +66,7 @@ class BytewiseComparatorImpl : public Comparator {
   }
 };
 }  // namespace
-
+// 获取BytewiseComparator的单例对象
 const Comparator* BytewiseComparator() {
   static NoDestructor<BytewiseComparatorImpl> singleton;
   return singleton.get();

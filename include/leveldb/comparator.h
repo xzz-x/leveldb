@@ -25,6 +25,7 @@ class LEVELDB_EXPORT Comparator {
   //   < 0 iff "a" < "b",
   //   == 0 iff "a" == "b",
   //   > 0 iff "a" > "b"
+  // 比较器中的比较函数
   virtual int Compare(const Slice& a, const Slice& b) const = 0;
 
   // The name of the comparator.  Used to check for comparator
@@ -37,6 +38,7 @@ class LEVELDB_EXPORT Comparator {
   //
   // Names starting with "leveldb." are reserved and should not be used
   // by any clients of this package.
+  // 返回比较器的名字
   virtual const char* Name() const = 0;
 
   // Advanced functions: these are used to reduce the space requirements
@@ -45,12 +47,15 @@ class LEVELDB_EXPORT Comparator {
   // If *start < limit, changes *start to a short string in [start,limit).
   // Simple comparator implementations may return with *start unchanged,
   // i.e., an implementation of this method that does nothing is correct.
+  // 如果*start<limit则将start指向的内容改变为[*start,limit)中的一个字符串;
+  // 默认的做法是不改变start所指向的内容
   virtual void FindShortestSeparator(std::string* start,
                                      const Slice& limit) const = 0;
 
   // Changes *key to a short string >= *key.
   // Simple comparator implementations may return with *key unchanged,
   // i.e., an implementation of this method that does nothing is correct.
+  // 将key所指向的字符串改变为大于等于*key的字符串;默认行为是不改变字符串
   virtual void FindShortSuccessor(std::string* key) const = 0;
 };
 

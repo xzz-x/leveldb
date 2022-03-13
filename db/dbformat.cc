@@ -12,12 +12,14 @@
 
 namespace leveldb {
 
+// 将序列号和type封装成SequenceNumber类型
 static uint64_t PackSequenceAndType(uint64_t seq, ValueType t) {
   assert(seq <= kMaxSequenceNumber);
   assert(t <= kValueTypeForSeek);
   return (seq << 8) | t;
 }
 
+// 将ParseInternalKey中的内容序列写入到result中；本质上是ParseInternalKey转换为InternalKey
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key) {
   result->append(key.user_key.data(), key.user_key.size());
   PutFixed64(result, PackSequenceAndType(key.sequence, key.type));
@@ -43,7 +45,7 @@ std::string InternalKey::DebugString() const {
 const char* InternalKeyComparator::Name() const {
   return "leveldb.InternalKeyComparator";
 }
-
+// 首先按照字典序比较user_key;如果user_key相等则按照降序的方式比较操作序列号;如果操作序列号相同;再按照降序的方式比较操作类型
 int InternalKeyComparator::Compare(const Slice& akey, const Slice& bkey) const {
   // Order by:
   //    increasing user key (according to user-supplied comparator)
@@ -80,7 +82,7 @@ void InternalKeyComparator::FindShortestSeparator(std::string* start,
     start->swap(tmp);
   }
 }
-
+// 寻找一个更短但是比key更大的internal_key
 void InternalKeyComparator::FindShortSuccessor(std::string* key) const {
   Slice user_key = ExtractUserKey(*key);
   std::string tmp(user_key.data(), user_key.size());
@@ -113,9 +115,10 @@ void InternalFilterPolicy::CreateFilter(const Slice* keys, int n,
 bool InternalFilterPolicy::KeyMayMatch(const Slice& key, const Slice& f) const {
   return user_policy_->KeyMayMatch(ExtractUserKey(key), f);
 }
-
+// 使用InternalKey构建一个LookupKey
 LookupKey::LookupKey(const Slice& user_key, SequenceNumber s) {
   size_t usize = user_key.size();
+  //字符串需要一个/0结尾;所以需要额外分配一字节的空间
   size_t needed = usize + 13;  // A conservative estimate
   char* dst;
   if (needed <= sizeof(space_)) {
@@ -124,10 +127,13 @@ LookupKey::LookupKey(const Slice& user_key, SequenceNumber s) {
     dst = new char[needed];
   }
   start_ = dst;
+  // 首先写入整个数据的长度
   dst = EncodeVarint32(dst, usize + 8);
   kstart_ = dst;
+  // 然后写入user_key
   std::memcpy(dst, user_key.data(), usize);
   dst += usize;
+  // 最后写入SequenceNumber
   EncodeFixed64(dst, PackSequenceAndType(s, kValueTypeForSeek));
   dst += 8;
   end_ = dst;

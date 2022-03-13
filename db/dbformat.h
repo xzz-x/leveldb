@@ -51,6 +51,7 @@ class InternalKey;
 // Value types encoded as the last component of internal keys.
 // DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
 // data structures.
+// LevelDb中支持的两种写操作：Delete和Put
 enum ValueType { kTypeDeletion = 0x0, kTypeValue = 0x1 };
 // kValueTypeForSeek defines the ValueType that should be passed when
 // constructing a ParsedInternalKey object for seeking to a particular
@@ -60,13 +61,16 @@ enum ValueType { kTypeDeletion = 0x0, kTypeValue = 0x1 };
 // ValueType, not the lowest).
 static const ValueType kValueTypeForSeek = kTypeValue;
 
+// SequenceNumber由两部分组成;最后一个字节代表写操作的类型;前七个字节代表操作的序列号;
+// 由序列号来判断对同一个key的写操作的先后顺序
 typedef uint64_t SequenceNumber;
 
 // We leave eight bits empty at the bottom so a type and sequence#
 // can be packed together into 64-bits.
 static const SequenceNumber kMaxSequenceNumber = ((0x1ull << 56) - 1);
-
+// 储存internal_key的解析结果;因为internal_key是一个字符串
 struct ParsedInternalKey {
+  // 
   Slice user_key;
   SequenceNumber sequence;
   ValueType type;
@@ -78,20 +82,24 @@ struct ParsedInternalKey {
 };
 
 // Return the length of the encoding of "key".
+// 返回internal_key所占据的大小
 inline size_t InternalKeyEncodingLength(const ParsedInternalKey& key) {
   return key.user_key.size() + 8;
 }
 
 // Append the serialization of "key" to *result.
+// 将internal_key追加到result中
 void AppendInternalKey(std::string* result, const ParsedInternalKey& key);
 
 // Attempt to parse an internal key from "internal_key".  On success,
 // stores the parsed data in "*result", and returns true.
 //
 // On error, returns false, leaves "*result" in an undefined state.
+// 将internal_key的字符串解析为ParseInternalKey
 bool ParseInternalKey(const Slice& internal_key, ParsedInternalKey* result);
 
 // Returns the user key portion of an internal key.
+// 从internal_key中抽取user_key
 inline Slice ExtractUserKey(const Slice& internal_key) {
   assert(internal_key.size() >= 8);
   return Slice(internal_key.data(), internal_key.size() - 8);
@@ -131,6 +139,7 @@ class InternalFilterPolicy : public FilterPolicy {
 // Modules in this directory should keep internal keys wrapped inside
 // the following class instead of plain strings so that we do not
 // incorrectly use string comparisons instead of an InternalKeyComparator.
+// 将internal_key进行封装;封装了internal_key的构造方法;但本质上还是一个字符串
 class InternalKey {
  private:
   std::string rep_;
@@ -140,19 +149,22 @@ class InternalKey {
   InternalKey(const Slice& user_key, SequenceNumber s, ValueType t) {
     AppendInternalKey(&rep_, ParsedInternalKey(user_key, s, t));
   }
-
+  // 从Slice中解析internal_key
   bool DecodeFrom(const Slice& s) {
     rep_.assign(s.data(), s.size());
     return !rep_.empty();
   }
 
+  // 将internal转为为Slice
   Slice Encode() const {
     assert(!rep_.empty());
     return rep_;
   }
 
+  // 获取internal_key中的user_key
   Slice user_key() const { return ExtractUserKey(rep_); }
 
+  // 将ParseInternalKey转换成InternalKey
   void SetFrom(const ParsedInternalKey& p) {
     rep_.clear();
     AppendInternalKey(&rep_, p);
@@ -172,10 +184,12 @@ inline bool ParseInternalKey(const Slice& internal_key,
                              ParsedInternalKey* result) {
   const size_t n = internal_key.size();
   if (n < 8) return false;
+  // 解析SequenceNumber
   uint64_t num = DecodeFixed64(internal_key.data() + n - 8);
   uint8_t c = num & 0xff;
   result->sequence = num >> 8;
   result->type = static_cast<ValueType>(c);
+  // 解析user_key
   result->user_key = Slice(internal_key.data(), n - 8);
   return (c <= static_cast<uint8_t>(kTypeValue));
 }
@@ -193,12 +207,15 @@ class LookupKey {
   ~LookupKey();
 
   // Return a key suitable for lookup in a MemTable.
+  // 解析metable_key的内容
   Slice memtable_key() const { return Slice(start_, end_ - start_); }
 
   // Return an internal key (suitable for passing to an internal iterator)
+  // 解析internal_key的内容
   Slice internal_key() const { return Slice(kstart_, end_ - kstart_); }
 
-  // Return the user key
+  // Return the user key、
+  // 解析user_key的内容
   Slice user_key() const { return Slice(kstart_, end_ - kstart_ - 8); }
 
  private:
@@ -209,9 +226,13 @@ class LookupKey {
   //                                    <-- end_
   // The array is a suitable MemTable key.
   // The suffix starting with "userkey" can be used as an InternalKey.
+  // start_到 kstart_之间的内容是 key_length
+  // kstart_到end_之间的内容是internal key包括userkey和SequenceNumber两部分
+  // start_到 end_之间的内容是memtable key
   const char* start_;
   const char* kstart_;
   const char* end_;
+  // 对于小对象可以直接预先分配内存;可以避免动态分配内存
   char space_[200];  // Avoid allocation for short keys
 };
 
