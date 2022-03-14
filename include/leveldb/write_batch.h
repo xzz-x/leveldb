@@ -32,6 +32,7 @@ class Slice;
 
 class LEVELDB_EXPORT WriteBatch {
  public:
+//  Handler是一个处理WriteBatch的接口;包括一个Put函数和一个Delete函数
   class LEVELDB_EXPORT Handler {
    public:
     virtual ~Handler();
@@ -73,8 +74,9 @@ class LEVELDB_EXPORT WriteBatch {
   Status Iterate(Handler* handler) const;
 
  private:
+//  WriteBatch的辅助类
   friend class WriteBatchInternal;
-
+  // 批处理写的内容
   std::string rep_;  // See comment in write_batch.cc for the format of rep_
 };
 
