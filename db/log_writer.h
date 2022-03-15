@@ -17,6 +17,7 @@ class WritableFile;
 
 namespace log {
 
+// 写WAL日志的类
 class Writer {
  public:
   // Create a writer that will append data to "*dest".
@@ -39,7 +40,9 @@ class Writer {
  private:
   Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
 
+  // 写入日志的文件对象
   WritableFile* dest_;
+  // 写入数据在block中的偏移位置
   int block_offset_;  // Current offset in block
 
   // crc32c values for all supported record types.  These are

@@ -88,16 +88,20 @@ class Reader {
   SequentialFile* const file_;
   Reporter* const reporter_;
   bool const checksum_;
+  // 读取数据是备用存储数组
   char* const backing_store_;
   Slice buffer_;
+  // 文件读完的标志
   bool eof_;  // Last Read() indicated EOF by returning < kBlockSize
 
   // Offset of the last record returned by ReadRecord.
+  // 读到的最后一条日志的偏移位置
   uint64_t last_record_offset_;
   // Offset of the first location past the end of buffer_.
   uint64_t end_of_buffer_offset_;
 
   // Offset at which to start looking for the first record to return
+  // 开始读第一条日志记录的偏移位置
   uint64_t const initial_offset_;
 
   // True if we are resynchronizing after a seek (initial_offset_ > 0). In

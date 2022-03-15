@@ -14,7 +14,7 @@ namespace leveldb {
 namespace log {
 
 Reader::Reporter::~Reporter() = default;
-
+// 构建一个日志的读对象
 Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
                uint64_t initial_offset)
     : file_(file),
@@ -30,11 +30,13 @@ Reader::Reader(SequentialFile* file, Reporter* reporter, bool checksum,
 
 Reader::~Reader() { delete[] backing_store_; }
 
+// 跳转至initial_offset所对应的block
 bool Reader::SkipToInitialBlock() {
   const size_t offset_in_block = initial_offset_ % kBlockSize;
   uint64_t block_start_location = initial_offset_ - offset_in_block;
 
   // Don't search a block if we'd be in the trailer
+  // inital_offset所在的位置在数据填充区域；需要移动到下一个block中
   if (offset_in_block > kBlockSize - 6) {
     block_start_location += kBlockSize;
   }
@@ -54,6 +56,7 @@ bool Reader::SkipToInitialBlock() {
 }
 
 bool Reader::ReadRecord(Slice* record, std::string* scratch) {
+  // 跳过initial_offset_之前的日志记录
   if (last_record_offset_ < initial_offset_) {
     if (!SkipToInitialBlock()) {
       return false;
@@ -188,12 +191,16 @@ void Reader::ReportDrop(uint64_t bytes, const Status& reason) {
 
 unsigned int Reader::ReadPhysicalRecord(Slice* result) {
   while (true) {
+    // 当读取的数据小于KHeaderSize时需要检查是否将日志文件读取完毕
     if (buffer_.size() < kHeaderSize) {
+
+      //没有读取完日志文件
       if (!eof_) {
         // Last read was a full read, so this is a trailer to skip
         buffer_.clear();
         Status status = file_->Read(kBlockSize, &buffer_, backing_store_);
         end_of_buffer_offset_ += buffer_.size();
+        // 检测到日志文件已经读完了
         if (!status.ok()) {
           buffer_.clear();
           ReportDrop(kBlockSize, status);
@@ -203,6 +210,8 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
           eof_ = true;
         }
         continue;
+
+        // 读取完日志文件直接返回一个错误
       } else {
         // Note that if buffer_ is non-empty, we have a truncated header at the
         // end of the file, which can be caused by the writer crashing in the
@@ -241,6 +250,7 @@ unsigned int Reader::ReadPhysicalRecord(Slice* result) {
     }
 
     // Check crc
+    // 校验crc
     if (checksum_) {
       uint32_t expected_crc = crc32c::Unmask(DecodeFixed32(header));
       uint32_t actual_crc = crc32c::Value(header + 6, 1 + length);

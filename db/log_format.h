@@ -10,11 +10,12 @@
 
 namespace leveldb {
 namespace log {
-
+// 日志记录的类型
 enum RecordType {
   // Zero is reserved for preallocated files
   kZeroType = 0,
 
+  // 一条日志可能会横跨多条bolck;所以需要记录block的类型;以确定block中的数据属于哪条日志
   kFullType = 1,
 
   // For fragments
@@ -23,10 +24,11 @@ enum RecordType {
   kLastType = 4
 };
 static const int kMaxRecordType = kLastType;
-
+// block的大小
 static const int kBlockSize = 32768;
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
+// record的头部大小
 static const int kHeaderSize = 4 + 2 + 1;
 
 }  // namespace log

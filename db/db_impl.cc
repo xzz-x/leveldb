@@ -222,6 +222,7 @@ void DBImpl::MaybeIgnoreError(Status* s) const {
   }
 }
 
+// 删除WAL的日志文件和一些table文件
 void DBImpl::RemoveObsoleteFiles() {
   mutex_.AssertHeld();
 
