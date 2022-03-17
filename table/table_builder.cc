@@ -98,11 +98,13 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   if (r->num_entries > 0) {
     assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
   }
-
+  // 将上一个刷新到磁盘的block记录下来
   if (r->pending_index_entry) {
     assert(r->data_block.empty());
+    // 在上一个block最后一个key和当前key之中寻找一个更短的key
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
+    // 作为index部分
     r->pending_handle.EncodeTo(&handle_encoding);
     r->index_block.Add(r->last_key, Slice(handle_encoding));
     r->pending_index_entry = false;
@@ -114,9 +116,11 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   r->last_key.assign(key.data(), key.size());
   r->num_entries++;
+  // 将key写入到datablock中
   r->data_block.Add(key, value);
 
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
+  // 当超过block的阈值需要开启新的block
   if (estimated_block_size >= r->options.block_size) {
     Flush();
   }
@@ -150,12 +154,14 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   Slice block_contents;
   CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
+  // 检测是否需要压缩
   switch (type) {
     case kNoCompression:
       block_contents = raw;
       break;
 
     case kSnappyCompression: {
+      // 进行Snappy压缩
       std::string* compressed = &r->compressed_output;
       if (port::Snappy_Compress(raw.data(), raw.size(), compressed) &&
           compressed->size() < raw.size() - (raw.size() / 8u)) {
@@ -171,15 +177,18 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   }
   WriteRawBlock(block_contents, type, handle);
   r->compressed_output.clear();
+  // 清空block的数据
   block->Reset();
 }
 
 void TableBuilder::WriteRawBlock(const Slice& block_contents,
                                  CompressionType type, BlockHandle* handle) {
   Rep* r = rep_;
+  // 设置偏移量和大小
   handle->set_offset(r->offset);
   handle->set_size(block_contents.size());
   r->status = r->file->Append(block_contents);
+  // 写入crc和压缩类型
   if (r->status.ok()) {
     char trailer[kBlockTrailerSize];
     trailer[0] = type;
@@ -238,6 +247,7 @@ Status TableBuilder::Finish() {
   }
 
   // Write footer
+  // 写footer数据
   if (ok()) {
     Footer footer;
     footer.set_metaindex_handle(metaindex_block_handle);

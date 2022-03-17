@@ -38,8 +38,9 @@ void Footer::EncodeTo(std::string* dst) const {
   assert(dst->size() == original_size + kEncodedLength);
   (void)original_size;  // Disable unused variable warning.
 }
-
+// 反序列化Footer
 Status Footer::DecodeFrom(Slice* input) {
+  // 先解析出魔数检验是否是Footer的数据
   const char* magic_ptr = input->data() + kEncodedLength - 8;
   const uint32_t magic_lo = DecodeFixed32(magic_ptr);
   const uint32_t magic_hi = DecodeFixed32(magic_ptr + 4);
@@ -69,7 +70,9 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
 
   // Read the block contents as well as the type/crc footer.
   // See table_builder.cc for the code that built this structure.
+  // 获取block的大小
   size_t n = static_cast<size_t>(handle.size());
+  // 读取的数据为block加上固定5字节
   char* buf = new char[n + kBlockTrailerSize];
   Slice contents;
   Status s = file->Read(handle.offset(), n + kBlockTrailerSize, &contents, buf);
@@ -83,6 +86,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
   }
 
   // Check the crc of the type and the block contents
+  // 校验crc
   const char* data = contents.data();  // Pointer to where Read put the data
   if (options.verify_checksums) {
     const uint32_t crc = crc32c::Unmask(DecodeFixed32(data + n + 1));
@@ -93,7 +97,7 @@ Status ReadBlock(RandomAccessFile* file, const ReadOptions& options,
       return s;
     }
   }
-
+  // 是否需要解压缩
   switch (data[n]) {
     case kNoCompression:
       if (data != buf) {

@@ -118,6 +118,7 @@ Options SanitizeOptions(const std::string& dbname,
   return result;
 }
 
+// TableCache的大小单位为SST的个数
 static int TableCacheSize(const Options& sanitized_options) {
   // Reserve ten files or so for other uses and give the rest to TableCache.
   return sanitized_options.max_open_files - kNumNonTableCacheFiles;

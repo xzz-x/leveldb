@@ -16,6 +16,7 @@ struct TableAndFile {
   Table* table;
 };
 
+// 淘汰缓存是通过delteEntry删除缓存句柄
 static void DeleteEntry(const Slice& key, void* value) {
   TableAndFile* tf = reinterpret_cast<TableAndFile*>(value);
   delete tf->table;
@@ -45,10 +46,12 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   EncodeFixed64(buf, file_number);
   Slice key(buf, sizeof(buf));
   *handle = cache_->Lookup(key);
+  // 缓存中没有找到table
   if (*handle == nullptr) {
     std::string fname = TableFileName(dbname_, file_number);
     RandomAccessFile* file = nullptr;
     Table* table = nullptr;
+    // 读取文件
     s = env_->NewRandomAccessFile(fname, &file);
     if (!s.ok()) {
       std::string old_fname = SSTTableFileName(dbname_, file_number);
@@ -65,6 +68,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       delete file;
       // We do not cache error results so that if the error is transient,
       // or somebody repairs the file, we recover automatically.
+      // 插入读取的SST
     } else {
       TableAndFile* tf = new TableAndFile;
       tf->file = file;

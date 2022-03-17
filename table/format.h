@@ -23,6 +23,7 @@ struct ReadOptions;
 class BlockHandle {
  public:
   // Maximum encoding length of a BlockHandle
+  // 一个可变长度64位最大占据10个字节
   enum { kMaxEncodedLength = 10 + 10 };
 
   BlockHandle();
@@ -35,16 +36,21 @@ class BlockHandle {
   uint64_t size() const { return size_; }
   void set_size(uint64_t size) { size_ = size; }
 
+  // 对offset和size进行编码
   void EncodeTo(std::string* dst) const;
+  // 反过来就是解码了
   Status DecodeFrom(Slice* input);
 
  private:
+//  block的偏移量
   uint64_t offset_;
+  // block的长度
   uint64_t size_;
 };
 
 // Footer encapsulates the fixed information stored at the tail
 // end of every table file.
+// 固定48字节位于文件的最末尾
 class Footer {
  public:
   // Encoded length of a Footer.  Note that the serialization of a
@@ -55,18 +61,25 @@ class Footer {
   Footer() = default;
 
   // The block handle for the metaindex block of the table
+  // 获取元数据索引块
   const BlockHandle& metaindex_handle() const { return metaindex_handle_; }
+  // 设置元数据索引块
   void set_metaindex_handle(const BlockHandle& h) { metaindex_handle_ = h; }
 
   // The block handle for the index block of the table
+  // 获取数据索引块
   const BlockHandle& index_handle() const { return index_handle_; }
+  // 设置数据索引块
   void set_index_handle(const BlockHandle& h) { index_handle_ = h; }
-
+  // 将对象的数据序列化
   void EncodeTo(std::string* dst) const;
+  // 反序列化操作
   Status DecodeFrom(Slice* input);
 
  private:
+//  指向元数据索引块
   BlockHandle metaindex_handle_;
+  // 指向数据索引块
   BlockHandle index_handle_;
 };
 

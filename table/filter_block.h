@@ -41,11 +41,16 @@ class FilterBlockBuilder {
  private:
   void GenerateFilter();
 
+  // 过滤器的策略;目前使用的是布隆过滤器
   const FilterPolicy* policy_;
+  // 平铺key的内容
   std::string keys_;             // Flattened key contents
+  // 每个key在keys中的偏移量
   std::vector<size_t> start_;    // Starting index in keys_ of each key
+  // 构建布隆过滤器的二进制数据
   std::string result_;           // Filter data computed so far
   std::vector<Slice> tmp_keys_;  // policy_->CreateFilter() argument
+  // leveldb中会为2k的数据创建一个布隆过滤器;会存在多个布隆过滤器;通过filter_offsets_记录每个filter的偏移量
   std::vector<uint32_t> filter_offsets_;
 };
 

@@ -60,6 +60,7 @@ size_t BlockBuilder::CurrentSizeEstimate() const {
 
 Slice BlockBuilder::Finish() {
   // Append restart array
+  // 保存重启点
   for (size_t i = 0; i < restarts_.size(); i++) {
     PutFixed32(&buffer_, restarts_[i]);
   }
@@ -69,8 +70,10 @@ Slice BlockBuilder::Finish() {
 }
 
 void BlockBuilder::Add(const Slice& key, const Slice& value) {
+  // 表示上一个key
   Slice last_key_piece(last_key_);
   assert(!finished_);
+  // block_restart_interval控制重启点之间的距离
   assert(counter_ <= options_->block_restart_interval);
   assert(buffer_.empty()  // No values yet?
          || options_->comparator->Compare(key, last_key_piece) > 0);
@@ -83,12 +86,14 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
     }
   } else {
     // Restart compression
+    // 设置重启点
     restarts_.push_back(buffer_.size());
     counter_ = 0;
   }
   const size_t non_shared = key.size() - shared;
 
   // Add "<shared><non_shared><value_size>" to buffer_
+  // 计算共享key相关星系
   PutVarint32(&buffer_, shared);
   PutVarint32(&buffer_, non_shared);
   PutVarint32(&buffer_, value.size());
@@ -98,6 +103,7 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   buffer_.append(value.data(), value.size());
 
   // Update state
+  // 更新lastkey
   last_key_.resize(shared);
   last_key_.append(key.data() + shared, non_shared);
   assert(Slice(last_key_) == key);
