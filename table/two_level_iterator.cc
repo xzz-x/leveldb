@@ -67,7 +67,7 @@ class TwoLevelIterator : public Iterator {
   // "index_value" passed to block_function_ to create the data_iter_.
   std::string data_block_handle_;
 };
-
+// 其中index_iter是迭代器;负责定位sst
 TwoLevelIterator::TwoLevelIterator(Iterator* index_iter,
                                    BlockFunction block_function, void* arg,
                                    const ReadOptions& options)
@@ -75,14 +75,19 @@ TwoLevelIterator::TwoLevelIterator(Iterator* index_iter,
       arg_(arg),
       options_(options),
       index_iter_(index_iter),
+      // data_iter是二级迭代器;其中的内容是sst的缓存
       data_iter_(nullptr) {}
 
 TwoLevelIterator::~TwoLevelIterator() = default;
 
 void TwoLevelIterator::Seek(const Slice& target) {
+  // 一级索引查找target从哪个sst文件开始查找
   index_iter_.Seek(target);
+  // 初始化data_block
   InitDataBlock();
+  // 二级索引中查找数据
   if (data_iter_.iter() != nullptr) data_iter_.Seek(target);
+  // 跳过背后为空的data_block索引
   SkipEmptyDataBlocksForward();
 }
 
@@ -119,6 +124,7 @@ void TwoLevelIterator::SkipEmptyDataBlocksForward() {
       SetDataIterator(nullptr);
       return;
     }
+    // 移动到下一个index_iter所对应的二级索引
     index_iter_.Next();
     InitDataBlock();
     if (data_iter_.iter() != nullptr) data_iter_.SeekToFirst();
@@ -144,15 +150,20 @@ void TwoLevelIterator::SetDataIterator(Iterator* data_iter) {
 }
 
 void TwoLevelIterator::InitDataBlock() {
+  // 外层迭代器无效;内层迭代器也需要设置为无效
   if (!index_iter_.Valid()) {
     SetDataIterator(nullptr);
   } else {
+    // 取出文件编号文件大小
     Slice handle = index_iter_.value();
+   
     if (data_iter_.iter() != nullptr &&
         handle.compare(data_block_handle_) == 0) {
       // data_iter_ is already constructed with this iterator, so
       // no need to change anything
+       // 如果一级索引下的二级索引没有构建；需要构建俄日索引
     } else {
+      // 这里的block_function是 table_cache->NewIterator
       Iterator* iter = (*block_function_)(arg_, options_, handle);
       data_block_handle_.assign(handle.data(), handle.size());
       SetDataIterator(iter);

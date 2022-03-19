@@ -38,6 +38,7 @@ struct Table::Rep {
 Status Table::Open(const Options& options, RandomAccessFile* file,
                    uint64_t size, Table** table) {
   *table = nullptr;
+  // 文件不能比kEncodedLength更小
   if (size < Footer::kEncodedLength) {
     return Status::Corruption("file is too short to be an sstable");
   }
@@ -45,10 +46,11 @@ Status Table::Open(const Options& options, RandomAccessFile* file,
   char footer_space[Footer::kEncodedLength];
   Slice footer_input;
   Status s = file->Read(size - Footer::kEncodedLength, Footer::kEncodedLength,
-                        &footer_input, footer_space);
+                        &footer_i nput, footer_space);
   if (!s.ok()) return s;
 
   Footer footer;
+  // 反序列化footer
   s = footer.DecodeFrom(&footer_input);
   if (!s.ok()) return s;
 
@@ -221,10 +223,12 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k, void* arg,
     Slice handle_value = iiter->value();
     FilterBlockReader* filter = rep_->filter;
     BlockHandle handle;
+    // 先在布隆过滤器中查找
     if (filter != nullptr && handle.DecodeFrom(&handle_value).ok() &&
         !filter->KeyMayMatch(handle.offset(), k)) {
       // Not found
     } else {
+      // 去sst中查找
       Iterator* block_iter = BlockReader(this, options, iiter->value());
       block_iter->Seek(k);
       if (block_iter->Valid()) {

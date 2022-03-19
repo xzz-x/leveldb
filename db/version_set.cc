@@ -160,8 +160,10 @@ bool SomeFileOverlapsRange(const InternalKeyComparator& icmp,
 // is the largest key that occurs in the file, and value() is an
 // 16-byte value containing the file number and file size, both
 // encoded using EncodeFixed64.
+// 这个迭代器是对level大于0的SST文件进行迭代
 class Version::LevelFileNumIterator : public Iterator {
  public:
+//  其实是对文件元数据进行遍历
   LevelFileNumIterator(const InternalKeyComparator& icmp,
                        const std::vector<FileMetaData*>* flist)
       : icmp_(icmp), flist_(flist), index_(flist->size()) {  // Marks as invalid

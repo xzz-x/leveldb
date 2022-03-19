@@ -43,6 +43,7 @@ static const char* EncodeKey(std::string* scratch, const Slice& target) {
   return scratch->data();
 }
 
+// memtable的迭代器
 class MemTableIterator : public Iterator {
  public:
   explicit MemTableIterator(MemTable::Table* table) : iter_(table) {}
@@ -67,6 +68,7 @@ class MemTableIterator : public Iterator {
   Status status() const override { return Status::OK(); }
 
  private:
+//  这个迭代器内部迭代的是skiplist
   MemTable::Table::Iterator iter_;
   std::string tmp_;  // For passing to EncodeKey
 };
